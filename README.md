@@ -3,7 +3,7 @@
 #To build:
 go build
 
-#Unit Test
+#Unit Test:
 go test
 
 #More tests
