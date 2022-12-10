@@ -9,19 +9,63 @@ import (
 	"net/http"
 	"hash/fnv"
 	"encoding/hex"
+	"encoding/gob"
+	"os"
 	"time"
 )
 
 const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
+const URL_STORE_LOC = "./url_data.gob"
 
 type URLData struct {
-	longURL string
-	shortURL string
-	dateCreated time.Time
+	LongURL string
+	ShortURL string
+	DateCreated time.Time
 }
 
 var URLTable map[string] *URLData
+
+/* Save URL Table into file */
+func StoreURLTable() {
+
+	df, err := os.OpenFile(URL_STORE_LOC, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		log.Println("Failed to create/open the file "+URL_STORE_LOC+", ", err)
+		return
+	}
+
+	defer df.Close()
+	gob.Register(URLData{})
+	enc := gob.NewEncoder(df)
+	enc.Encode(URLTable)
+}
+
+/* Load URL Table from file */
+func LoadURLTable() (urlTab map[string] *URLData) {
+
+	df, err := os.OpenFile(URL_STORE_LOC, os.O_RDONLY, 0600)
+	if err != nil {
+		log.Println("Failed to open the file "+URL_STORE_LOC+", ", err)
+		return
+	}
+
+	defer df.Close()
+
+	gob.Register(URLData{})
+	dec := gob.NewDecoder(df)
+	//err = dec.Decode(&URLTable)
+	err = dec.Decode(&urlTab)
+	i := 0
+	//for _, v := range URLTable{
+	for _, v := range urlTab {
+		i++
+		log.Println("Loaded URL Entry ", i, ": ", *v)
+	}
+
+	return urlTab
+}
+
 
 /* Generate non-cryptographic hash for a string */
 func GenerateHash(longURL string) string {
@@ -44,12 +88,12 @@ func GetShortURL(lurl string) string {
 		surl := BASE_SHORT_URL+GenerateHash(lurl)
 		newUrlEntry := URLData{lurl, surl, time.Now()}
 		URLTable[lurl] = &newUrlEntry
+		StoreURLTable()
 		return surl
 	}
 
 	log.Println("Found short URL in the table for ", lurl)
-	return urlEntry.shortURL
-	//return ""
+	return urlEntry.ShortURL
 }
 
 /*HTTP Handler function for url shorting request*/
@@ -73,7 +117,8 @@ func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 /*Init function*/
 func init() {
 
-	URLTable = make(map[string]*URLData)
+	//URLTable = make(map[string]*URLData)
+	URLTable = LoadURLTable()
 	log.Println("Inialized..")
 }
 
@@ -83,6 +128,4 @@ func main() {
 
 	log.Println("Starting URL Shortening Service at port "+SERVER_PORT)
 	http.ListenAndServe(":"+SERVER_PORT, nil)
-
-
 }
