@@ -48,7 +48,7 @@ func LoadURLTable() (urlTab map[string] *URLData) {
 	df, err := os.OpenFile(URL_STORE_LOC, os.O_RDONLY, 0600)
 	if err != nil {
 		log.Println("Failed to open the file "+URL_STORE_LOC+", ", err)
-		return
+		return nil
 	}
 
 	defer df.Close()
@@ -56,6 +56,11 @@ func LoadURLTable() (urlTab map[string] *URLData) {
 	gob.Register(URLData{})
 	dec := gob.NewDecoder(df)
 	err = dec.Decode(&urlTab)
+	if err != nil {
+		log.Println("Failed to decode from file "+URL_STORE_LOC+", ", err)
+		return nil
+	}
+
 	i := 0
 	for _, v := range urlTab {
 		i++
@@ -117,6 +122,9 @@ func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 func init() {
 
 	URLTable = LoadURLTable()
+	if URLTable == nil {
+		URLTable = make(map[string]*URLData)
+	}
 	log.Println("Inialized..")
 }
 
@@ -125,5 +133,5 @@ func main() {
 	http.HandleFunc(SHORT_URL_END_POINT, HandleURLShortReqs)
 
 	log.Println("Starting URL Shortening Service at port "+SERVER_PORT)
-	http.ListenAndServe(":"+SERVER_PORT, nil)
+	log.Fatal(http.ListenAndServe(":"+SERVER_PORT, nil))
 }
