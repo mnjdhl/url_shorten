@@ -17,6 +17,7 @@ import (
 const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
 const URL_STORE_LOC = "./url_data.gob"
+const SHORT_URL_END_POINT = "/shorturl"
 
 type URLData struct {
 	LongURL string
@@ -54,10 +55,8 @@ func LoadURLTable() (urlTab map[string] *URLData) {
 
 	gob.Register(URLData{})
 	dec := gob.NewDecoder(df)
-	//err = dec.Decode(&URLTable)
 	err = dec.Decode(&urlTab)
 	i := 0
-	//for _, v := range URLTable{
 	for _, v := range urlTab {
 		i++
 		log.Println("Loaded URL Entry ", i, ": ", *v)
@@ -117,14 +116,13 @@ func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 /*Init function*/
 func init() {
 
-	//URLTable = make(map[string]*URLData)
 	URLTable = LoadURLTable()
 	log.Println("Inialized..")
 }
 
 func main() {
 
-	http.HandleFunc("/shorturl", HandleURLShortReqs)
+	http.HandleFunc(SHORT_URL_END_POINT, HandleURLShortReqs)
 
 	log.Println("Starting URL Shortening Service at port "+SERVER_PORT)
 	http.ListenAndServe(":"+SERVER_PORT, nil)

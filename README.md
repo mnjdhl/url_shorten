@@ -1,4 +1,8 @@
 # URL Shortening Service;written in Golang
+#The service receives HTTP Request at port 9988 on end-point "/shorturl".
+#The Query Parameter name used is "longURL". 
+#e.g. Client can send request as below:
+curl http://127.0.0.1:9988/shorturl?longURL=www.efghi.com/longlongurl4nhgjkkkssslkkhhaa
 
 #To build:
 go build
