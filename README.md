@@ -16,3 +16,5 @@ go test
 
 2. Run the curl client from another terminal:
 sh url_tests.sh
+
+3. To launch the container, execute script 'launch_container.sh' from the dir where container image 'UrlShorten.tar.gz' is located
