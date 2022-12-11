@@ -18,6 +18,9 @@ const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
 var URL_STORE_LOC string
 const SHORT_URL_END_POINT = "/shorturl"
+var updateUrlChan chan bool
+var updateUrlCounter int
+var updateUrlThreshold int
 
 type URLData struct {
 	LongURL string
@@ -26,6 +29,17 @@ type URLData struct {
 }
 
 var URLTable map[string] *URLData
+
+
+func StoreURLRoutine() {
+
+	for {
+		updateFlag := <-updateUrlChan
+		if updateFlag {
+			StoreURLTable()
+		}
+	}
+}
 
 /* Save URL Table into file */
 func StoreURLTable() {
@@ -40,6 +54,7 @@ func StoreURLTable() {
 	gob.Register(URLData{})
 	enc := gob.NewEncoder(df)
 	enc.Encode(URLTable)
+	log.Println("Updated URL Entries in "+URL_STORE_LOC)
 }
 
 /* Load URL Table from file */
@@ -89,10 +104,13 @@ func GetShortURL(lurl string) string {
 
 	urlEntry := URLTable[lurl]
 	if urlEntry == nil {
-		surl := BASE_SHORT_URL+GenerateHash(lurl)
+		surl := BASE_SHORT_URL + GenerateHash(lurl)
 		newUrlEntry := URLData{lurl, surl, time.Now()}
 		URLTable[lurl] = &newUrlEntry
-		StoreURLTable()
+		updateUrlCounter++
+		if (updateUrlCounter % updateUrlThreshold) == 0 {
+			updateUrlChan <- true
+		}
 		return surl
 	}
 
@@ -132,7 +150,12 @@ func init() {
 	if URLTable == nil {
 		URLTable = make(map[string]*URLData)
 	}
+	updateUrlChan = make(chan bool, 1)
+	updateUrlCounter = 0
+	updateUrlThreshold = 10
+	go StoreURLRoutine()
 	log.Println("Inialized..")
+
 }
 
 func main() {

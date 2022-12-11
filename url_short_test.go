@@ -8,6 +8,7 @@ import (
 var urlTab = []URLData{URLData{"www.abc.com/longlongurlkjjsss", "ti.ny/10c2398f", time.Time{}}, URLData{"www.xyz.com/longlongurl2nmmmsssakkssstyy", "ti.ny/f17fc388", time.Time{}}, URLData{"www.efg.com/longlongurl3nhgjkkkssslkkhhaa", "ti.ny/0de0929b", time.Time{}}}
 
 func TestGetShortURL(t *testing.T) {
+	updateUrlThreshold = len(urlTab)
 	for _, lu := range urlTab {
 		surl := GetShortURL(lu.LongURL)
 		if surl != lu.ShortURL {
@@ -21,6 +22,8 @@ func TestGetShortURL(t *testing.T) {
 			}
 		}
 	}
+
+	StoreURLTable()
 }
 
 func TestInMemURLs(t *testing.T) {
