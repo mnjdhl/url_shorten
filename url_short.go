@@ -16,7 +16,7 @@ import (
 
 const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
-const URL_STORE_LOC = "./url_data.gob"
+var URL_STORE_LOC string
 const SHORT_URL_END_POINT = "/shorturl"
 
 type URLData struct {
@@ -120,6 +120,13 @@ func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 
 /*Init function*/
 func init() {
+
+	_, err := os.Stat("/data")
+	if os.IsNotExist(err) {
+		URL_STORE_LOC = "./url_data.gob"
+	} else {
+		URL_STORE_LOC = "/data/url_data.gob"
+	}
 
 	URLTable = LoadURLTable()
 	if URLTable == nil {
