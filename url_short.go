@@ -118,6 +118,19 @@ func GetShortURL(lurl string) string {
 	return urlEntry.ShortURL
 }
 
+func GetLongURL(surl string) string {
+
+	for _, v := range URLTable {
+		log.Println(v)
+		if v.ShortURL == (BASE_SHORT_URL + surl) {
+			log.Println("Found long URL in the table for ", surl)
+			return v.LongURL
+		}
+	}
+	return ""
+}
+
+
 /*HTTP Handler function for url shorting request*/
 func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 
@@ -135,6 +148,23 @@ func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
 	}
 
 }
+
+func RedirectShortURL(hrw http.ResponseWriter, hreq *http.Request) {
+
+	if hreq.Method == "GET" {
+		shortURL := hreq.URL.Path[1:]
+		longURL := GetLongURL(shortURL)
+		if longURL != "" {
+			log.Println("Redirecting ", shortURL, " to ", longURL)
+			http.Redirect(hrw, hreq, longURL,  http.StatusSeeOther)
+		} else {
+			log.Println("Redirecting failed as ", shortURL, " not found in the table")
+			http.Error(hrw, "Invalid Short URL", http.StatusBadRequest)
+		}
+	}
+
+}
+
 
 /*Init function*/
 func init() {
@@ -161,6 +191,7 @@ func init() {
 func main() {
 
 	http.HandleFunc(SHORT_URL_END_POINT, HandleURLShortReqs)
+	http.HandleFunc("/", RedirectShortURL)
 
 	log.Println("Starting URL Shortening Service at port "+SERVER_PORT)
 	log.Fatal(http.ListenAndServe(":"+SERVER_PORT, nil))
