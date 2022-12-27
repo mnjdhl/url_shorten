@@ -5,31 +5,33 @@ Author: Manoj Dahal
 package main
 
 import (
+	"encoding/gob"
+	"encoding/hex"
+	"hash/fnv"
 	"log"
 	"net/http"
-	"hash/fnv"
-	"encoding/hex"
-	"encoding/gob"
 	"os"
 	"time"
 )
 
 const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
+
 var URL_STORE_LOC string
+
 const SHORT_URL_END_POINT = "/shorturl"
+
 var updateUrlChan chan bool
 var updateUrlCounter int
 var updateUrlThreshold int
 
 type URLData struct {
-	LongURL string
-	ShortURL string
+	LongURL     string
+	ShortURL    string
 	DateCreated time.Time
 }
 
-var URLTable map[string] *URLData
-
+var URLTable map[string]*URLData
 
 func StoreURLRoutine() {
 
@@ -54,11 +56,11 @@ func StoreURLTable() {
 	gob.Register(URLData{})
 	enc := gob.NewEncoder(df)
 	enc.Encode(URLTable)
-	log.Println("Updated URL Entries in "+URL_STORE_LOC)
+	log.Println("Updated URL Entries in " + URL_STORE_LOC)
 }
 
 /* Load URL Table from file */
-func LoadURLTable() (urlTab map[string] *URLData) {
+func LoadURLTable() (urlTab map[string]*URLData) {
 
 	df, err := os.OpenFile(URL_STORE_LOC, os.O_RDONLY, 0600)
 	if err != nil {
@@ -85,7 +87,6 @@ func LoadURLTable() (urlTab map[string] *URLData) {
 	return urlTab
 }
 
-
 /* Generate non-cryptographic hash for a string */
 func GenerateHash(longURL string) string {
 
@@ -104,9 +105,12 @@ func GetShortURL(lurl string) string {
 
 	urlEntry := URLTable[lurl]
 	if urlEntry == nil {
-		surl := BASE_SHORT_URL + GenerateHash(lurl)
+		uhash := GenerateHash(lurl)
+		//surl := BASE_SHORT_URL + GenerateHash(lurl)
+		surl := BASE_SHORT_URL + uhash
 		newUrlEntry := URLData{lurl, surl, time.Now()}
 		URLTable[lurl] = &newUrlEntry
+		URLTable[uhash] = &newUrlEntry
 		updateUrlCounter++
 		if (updateUrlCounter % updateUrlThreshold) == 0 {
 			updateUrlChan <- true
@@ -120,16 +124,24 @@ func GetShortURL(lurl string) string {
 
 func GetLongURL(surl string) string {
 
+	surl_ex := BASE_SHORT_URL + surl
+	urlEntry := URLTable[surl]
+	if urlEntry != nil {
+		if urlEntry.ShortURL == surl_ex {
+			log.Println("Found the long url for the short url ", surl)
+			return urlEntry.LongURL
+		}
+	}
+
 	for _, v := range URLTable {
 		log.Println(v)
-		if v.ShortURL == (BASE_SHORT_URL + surl) {
+		if v.ShortURL == surl_ex {
 			log.Println("Found long URL in the table for ", surl)
 			return v.LongURL
 		}
 	}
 	return ""
 }
-
 
 /*HTTP Handler function for url shorting request*/
 func HandleURLShortReqs(hrw http.ResponseWriter, hreq *http.Request) {
@@ -156,7 +168,7 @@ func RedirectShortURL(hrw http.ResponseWriter, hreq *http.Request) {
 		longURL := GetLongURL(shortURL)
 		if longURL != "" {
 			log.Println("Redirecting ", shortURL, " to ", longURL)
-			http.Redirect(hrw, hreq, longURL,  http.StatusSeeOther)
+			http.Redirect(hrw, hreq, longURL, http.StatusSeeOther)
 		} else {
 			log.Println("Redirecting failed as ", shortURL, " not found in the table")
 			http.Error(hrw, "Invalid Short URL", http.StatusBadRequest)
@@ -164,7 +176,6 @@ func RedirectShortURL(hrw http.ResponseWriter, hreq *http.Request) {
 	}
 
 }
-
 
 /*Init function*/
 func init() {
@@ -193,6 +204,6 @@ func main() {
 	http.HandleFunc(SHORT_URL_END_POINT, HandleURLShortReqs)
 	http.HandleFunc("/", RedirectShortURL)
 
-	log.Println("Starting URL Shortening Service at port "+SERVER_PORT)
+	log.Println("Starting URL Shortening Service at port " + SERVER_PORT)
 	log.Fatal(http.ListenAndServe(":"+SERVER_PORT, nil))
 }
