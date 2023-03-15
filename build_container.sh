@@ -1,4 +1,5 @@
-CGO_ENABLED=0 go build
+#CGO_ENABLED=0 go build
+CGO_ENABLED=0 go build url_short.go -o url_shorten
 mv url_shorten docker
 cd docker
 rm UrlShorten.tar.gz
