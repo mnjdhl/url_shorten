@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+const (
+    HASH_SIZE32 = iota
+    HASH_SIZE64
+)
 const SERVER_PORT = "9988"
 const BASE_SHORT_URL = "ti.ny/"
 
@@ -88,13 +92,19 @@ func LoadURLTable() (urlTab map[string]*URLData) {
 }
 
 /* Generate non-cryptographic hash for a string */
-func GenerateHash(longURL string) string {
+func GenerateHash(longURL string, size uint32) string {
+    var sm []byte
 
-	//hfn := fnv.New64()
-	hfn := fnv.New32()
+    if size == HASH_SIZE32 {
+	    hfn := fnv.New32()
+	    hfn.Write([]byte(longURL))
+	    sm = hfn.Sum(nil)
+    } else if size == HASH_SIZE64 {
+	    hfn := fnv.New64()
+	    hfn.Write([]byte(longURL))
+	    sm = hfn.Sum(nil)
+    }
 
-	hfn.Write([]byte(longURL))
-	sm := hfn.Sum(nil)
 
 	log.Println("Hash generated for ", longURL)
 	return hex.EncodeToString(sm)
@@ -105,8 +115,7 @@ func GetShortURL(lurl string) string {
 
 	urlEntry := URLTable[lurl]
 	if urlEntry == nil {
-		uhash := GenerateHash(lurl)
-		//surl := BASE_SHORT_URL + GenerateHash(lurl)
+		uhash := GenerateHash(lurl, HASH_SIZE32)
 		surl := BASE_SHORT_URL + uhash
 		newUrlEntry := URLData{lurl, surl, time.Now()}
 		URLTable[lurl] = &newUrlEntry
